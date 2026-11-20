@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>유사 차트 오버랩</title>
+<style>
+body{margin:0;font-family:-apple-system,"Malgun Gothic",sans-serif;background:#fff;color:#111}
+.wrap{max-width:1100px;margin:0 auto;padding:12px}
+h1{font-size:18px;margin:4px 0 8px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;align-items:center}
+button,select{font-size:14px;padding:6px 10px;border:1px solid #ccc;background:#f7f7f7;border-radius:6px;cursor:pointer}
+button.on{background:#111;color:#fff;border-color:#111}
+#chart{width:100%;height:520px;border:1px solid #e5e5e5;border-radius:6px}
+.lg{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin:8px 0}
+.lg label{display:flex;align-items:center;gap:5px;cursor:pointer}
+.sw{width:11px;height:11px;border-radius:2px;display:inline-block}
+table{border-collapse:collapse;font-size:13px;margin-top:10px;width:100%}
+td,th{border-bottom:1px solid #eee;padding:6px 4px;text-align:right}
+td:first-child,th:first-child{text-align:left}
+.up{color:#e34948}.dn{color:#2a78d6}
+.note{font-size:12px;color:#777;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>현재 차트와 비슷한 과거 구간 오버랩</h1>
+<div class="bar" id="idx"></div>
+<div class="bar">
+  <span>비교 길이</span>
+  <select id="win"><option value="40">40일</option><option value="60" selected>60일</option><option value="90">90일</option></select>
+  <span>캔들로 볼 사례</span>
+  <select id="candleSel"><option value="-1">없음(선)</option><option value="0">사례 1</option><option value="1">사례 2</option><option value="2">사례 3</option></select>
+  <button id="zin">＋ 확대</button><button id="zout">－ 축소</button><button id="zall">전체</button><button id="znow">오늘 근처</button>
+</div>
+<div id="chart"></div>
+<div class="lg" id="lg"></div>
+<table id="tb"></table>
+<div class="note" id="meta"></div>
+<div class="note">마우스 휠: 확대/축소 · 드래그: 이동 · 모바일: 두 손가락 확대. 모든 사례는 구간 종료일(0일) 종가 = 100 으로 맞춘 값입니다. 정보 제공용이며 매수·매도 권유가 아닙니다.</div>
+</div>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const DAY0 = 14610 + 400;                 // 상대일 i -> 가짜 날짜(UTC 초)
+const toT = i => (DAY0 + i) * 86400;
+const rel = t => Math.round(t / 86400) - DAY0;
+const COL = ['#1baf7a', '#eda100', '#8b5cf6'];
+const UP = '#e34948', DN = '#2a78d6';
+const INDEXES = [['NASDAQ', '나스닥'], ['SP500', 'S&P500'], ['KOSPI', '코스피']];
+let cur = 'NASDAQ', data = null, series = [], curSeries = null;
+
+const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+  layout: { background: { color: '#ffffff' }, textColor: '#333' },
+  grid: { vertLines: { color: '#f0f0f0' }, horzLines: { color: '#f0f0f0' } },
+  rightPriceScale: { borderColor: '#ddd' },
+  timeScale: { borderColor: '#ddd', tickMarkFormatter: t => String(rel(t)), rightOffset: 3 },
+  localization: { timeFormatter: t => rel(t) + '일' },
+  crosshair: { mode: 0 },
+  autoSize: true,
+});
+
+function clearAll() { series.forEach(s => chart.removeSeries(s)); series = []; if (curSeries) { chart.removeSeries(curSeries); curSeries = null; } }
+
+function draw() {
+  clearAll();
+  const candleIdx = +document.getElementById('candleSel').value;
+  data.matches.forEach((m, k) => {
+    const hidden = !document.getElementById('cb' + k).checked;
+    let s;
+    if (k === candleIdx) {
+      s = chart.addCandlestickSeries({
+        upColor: COL[k] + '66', downColor: COL[k], borderUpColor: COL[k], borderDownColor: COL[k],
+        wickUpColor: COL[k], wickDownColor: COL[k], visible: !hidden, priceLineVisible: false, lastValueVisible: false });
+      s.setData(m.bars.map(b => ({ time: toT(b.i), open: b.o, high: b.h, low: b.l, close: b.c })));
+    } else {
+      s = chart.addLineSeries({ color: COL[k], lineWidth: 2, lineStyle: k === 0 ? 0 : k === 1 ? 2 : 1,
+        visible: !hidden, priceLineVisible: false, lastValueVisible: false });
+      s.setData(m.bars.map(b => ({ time: toT(b.i), value: b.c })));
+    }
+    series.push(s);
+  });
+  curSeries = chart.addCandlestickSeries({
+    upColor: UP, downColor: DN, borderUpColor: UP, borderDownColor: DN, wickUpColor: UP, wickDownColor: DN,
+    priceLineVisible: false });
+  curSeries.setData(data.current.map(b => ({ time: toT(b.i), open: b.o, high: b.h, low: b.l, close: b.c })));
+  curSeries.setMarkers([{ time: toT(0), position: 'aboveBar', color: '#e34948', shape: 'arrowDown', text: '오늘' }]);
+  showNow();
+}
+
+function showNow() {
+  chart.timeScale().setVisibleRange({ from: toT(-data.W + 1), to: toT(data.F) });
+}
+
+function fmt(v) { return '<span class="' + (v >= 0 ? 'up' : 'dn') + '">' + (v >= 0 ? '+' : '') + v.toFixed(1) + '%</span>'; }
+
+function renderInfo() {
+  const lg = document.getElementById('lg'); lg.innerHTML = '';
+  lg.insertAdjacentHTML('beforeend', '<span><span class="sw" style="background:' + UP + '"></span> 현재 (' + data.current[0].i + '~0일, 캔들)</span>');
+  data.matches.forEach((m, k) => {
+    lg.insertAdjacentHTML('beforeend',
+      '<label><input type="checkbox" id="cb' + k + '" checked><span class="sw" style="background:' + COL[k] + '"></span>사례 ' + (k + 1) + ': ' + m.from + ' ~ ' + m.to + ' (상관 ' + m.corr + ')</label>');
+    document.getElementById('cb' + k).addEventListener('change', () => series[k].applyOptions({ visible: document.getElementById('cb' + k).checked }));
+  });
+  let h = '<tr><th>사례</th><th>구간 등락</th><th>이후 1개월</th><th>2개월</th><th>3개월</th></tr>';
+  data.matches.forEach((m, k) => {
+    h += '<tr><td>' + (k + 1) + '. ' + m.from + ' ~ ' + m.to + '</td><td>' + fmt(m.ret) + '</td><td>' + fmt(m.fwd['21']) + '</td><td>' + fmt(m.fwd['42']) + '</td><td>' + fmt(m.fwd['63']) + '</td></tr>';
+  });
+  document.getElementById('tb').innerHTML = h;
+  document.getElementById('meta').textContent = '기준일 ' + data.asof + ' · 갱신 ' + data.updated;
+}
+
+async function load() {
+  const w = document.getElementById('win').value;
+  try {
+    const r = await fetch('data/' + cur + '_' + w + '.json?v=' + Date.now());
+    data = await r.json();
+  } catch (e) { document.getElementById('meta').textContent = '데이터를 불러오지 못했습니다.'; return; }
+  renderInfo(); draw();
+}
+
+function zoom(f) {
+  const ts = chart.timeScale(), r = ts.getVisibleLogicalRange(); if (!r) return;
+  const c = (r.from + r.to) / 2, half = (r.to - r.from) / 2 * f;
+  ts.setVisibleLogicalRange({ from: c - half, to: c + half });
+}
+
+const idxBar = document.getElementById('idx');
+INDEXES.forEach(([k, label]) => {
+  const b = document.createElement('button'); b.textContent = label; b.dataset.k = k;
+  if (k === cur) b.className = 'on';
+  b.onclick = () => { cur = k; [...idxBar.children].forEach(x => x.className = x.dataset.k === k ? 'on' : ''); load(); };
+  idxBar.appendChild(b);
+});
+document.getElementById('win').onchange = load;
+document.getElementById('candleSel').onchange = () => { if (data) draw(); };
+document.getElementById('zin').onclick = () => zoom(0.6);
+document.getElementById('zout').onclick = () => zoom(1.6);
+document.getElementById('zall').onclick = () => chart.timeScale().fitContent();
+document.getElementById('znow').onclick = () => { if (data) showNow(); };
+load();
+</script>
+</body>
+</html>
