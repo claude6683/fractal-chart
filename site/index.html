@@ -46,7 +46,7 @@ const toT = i => (DAY0 + i) * 86400;
 const rel = t => Math.round(t / 86400) - DAY0;
 const COL = ['#1baf7a', '#eda100', '#8b5cf6'];
 const UP = '#e34948', DN = '#2a78d6';
-const INDEXES = [['NASDAQ', '나스닥'], ['SP500', 'S&P500'], ['KOSPI', '코스피']];
+const INDEXES = [['NASDAQ', '나스닥'], ['SP500', 'S&P500'], ['KOSPI', '코스피'], ['BTC', '비트코인']];
 let cur = 'NASDAQ', data = null, series = [], curSeries = null;
 
 const chart = LightweightCharts.createChart(document.getElementById('chart'), {
@@ -103,7 +103,7 @@ function renderInfo() {
   });
   let h = '<tr><th>사례</th><th>구간 등락</th><th>이후 1개월</th><th>2개월</th><th>3개월</th></tr>';
   data.matches.forEach((m, k) => {
-    h += '<tr><td>' + (k + 1) + '. ' + m.from + ' ~ ' + m.to + '</td><td>' + fmt(m.ret) + '</td><td>' + fmt(m.fwd['21']) + '</td><td>' + fmt(m.fwd['42']) + '</td><td>' + fmt(m.fwd['63']) + '</td></tr>';
+    h += '<tr><td>' + (k + 1) + '. ' + m.from + ' ~ ' + m.to + '</td><td>' + fmt(m.ret) + '</td><td>' + fmt(m.fwd['1']) + '</td><td>' + fmt(m.fwd['2']) + '</td><td>' + fmt(m.fwd['3']) + '</td></tr>';
   });
   document.getElementById('tb').innerHTML = h;
   document.getElementById('meta').textContent = '기준일 ' + data.asof + ' · 갱신 ' + data.updated;

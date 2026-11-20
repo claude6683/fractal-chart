@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-INDEXES = {"NASDAQ": "^IXIC", "SP500": "^GSPC", "KOSPI": "^KS11"}
+INDEXES = {"NASDAQ": "^IXIC", "SP500": "^GSPC", "KOSPI": "^KS11", "BTC": "BTC-USD"}
+BPM = {"BTC": 30}         # 한 달 = 며칠(비트코인은 365일 거래). 기본 21
 WINDOWS = [40, 60, 90]   # 비교할 최근 거래일 수
-F = 63                    # 이후 구간(약 3개월)
 TOP, GAP = 3, 120         # 사례 개수, 사례 간 최소 간격(거래일)
 OUT = os.path.join("site", "data")
 
@@ -52,6 +52,8 @@ def bars(df, a, b, e):
 def run(name, ticker):
     df = load(ticker)
     close = df["Close"].values
+    bpm = BPM.get(name, 21)
+    F = 3 * bpm                # 이후 구간 = 3개월
     L = np.log(close)
     n = len(L)
     for W in WINDOWS:
@@ -76,7 +78,7 @@ def run(name, ticker):
         matches = []
         for sc, corr, s in picks:
             e = s + W - 1
-            fwd = {str(d): round((close[e + d] / close[e] - 1) * 100, 1) for d in (21, 42, 63)}
+            fwd = {str(k + 1): round((close[e + d] / close[e] - 1) * 100, 1) for k, d in enumerate((bpm, 2 * bpm, 3 * bpm))}
             matches.append({"from": str(df.index[s].date()), "to": str(df.index[e].date()),
                             "corr": round(corr, 2),
                             "ret": round((close[e] / close[s] - 1) * 100, 1),
