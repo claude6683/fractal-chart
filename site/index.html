@@ -5,72 +5,104 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>유사 차트 오버랩</title>
 <style>
-body{margin:0;font-family:-apple-system,"Malgun Gothic",sans-serif;background:#fff;color:#111}
-.wrap{max-width:1100px;margin:0 auto;padding:12px}
-h1{font-size:18px;margin:4px 0 8px}
-.bar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;align-items:center}
-button,select{font-size:14px;padding:6px 10px;border:1px solid #ccc;background:#f7f7f7;border-radius:6px;cursor:pointer}
-button.on{background:#111;color:#fff;border-color:#111}
-#chart{width:100%;height:520px;border:1px solid #e5e5e5;border-radius:6px;position:relative}
-#tip{position:absolute;z-index:5;display:none;pointer-events:none;background:rgba(255,255,255,.96);border:1px solid #ccc;border-radius:6px;padding:7px 9px;font-size:12px;line-height:1.55;box-shadow:0 1px 4px rgba(0,0,0,.15);white-space:nowrap}
-.lg{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin:8px 0}
-.lg label{display:flex;align-items:center;gap:5px;cursor:pointer}
-.sw{width:11px;height:11px;border-radius:2px;display:inline-block}
-table{border-collapse:collapse;font-size:13px;margin-top:10px;width:100%}
-td,th{border-bottom:1px solid #eee;padding:6px 4px;text-align:right}
-td:first-child,th:first-child{text-align:left}
-.up{color:#e34948}.dn{color:#2a78d6}
-.note{font-size:12px;color:#777;margin-top:8px}
+  :root{--bg:#0f1115;--card:#181b22;--line:#2a2f3a;--tx:#e8eaf0;--sub:#8b93a7;--ac:#4aa3ff;--up:#34d399;--dn:#ff6b6b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Malgun Gothic",sans-serif}
+  .wrap{max-width:1200px;margin:0 auto;padding:14px 14px 28px}
+  .top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:10px}
+  .top a{color:var(--sub);text-decoration:none;font-size:14px}
+  h1{font-size:20px;margin:0 8px 0 0}
+  .grp{display:flex;gap:4px;flex-wrap:wrap}
+  .sp{flex:1}
+  button{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:13px;cursor:pointer}
+  button.on{border-color:var(--ac);color:var(--ac)}
+  select{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:13px}
+  .tools{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:4px;align-items:center;margin-bottom:8px}
+  .tools .lbl{color:var(--sub);font-size:10px;margin-left:6px;white-space:nowrap}
+  .tools select{font-size:10.4px;padding:4px 7px;white-space:nowrap;border-radius:7px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center}
+  .chip{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px;cursor:pointer;user-select:none}
+  .chip input{display:none}
+  .chip.off{opacity:.35}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .sw{width:11px;height:11px;border-radius:2px;display:inline-block}
+  #chartbox{position:relative}
+  #chart{width:100%;height:calc(100vh - 300px);min-height:380px;border:1px solid var(--line);border-radius:12px;overflow:hidden;position:relative}
+  #tip{position:absolute;z-index:5;display:none;pointer-events:none;background:rgba(24,27,34,.95);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.7;white-space:nowrap}
+  table{border-collapse:collapse;font-size:13px;margin-top:10px;width:100%}
+  td,th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:right}
+  th{color:var(--sub);font-weight:500}
+  td:first-child,th:first-child{text-align:left}
+  .up{color:var(--up)}.dn{color:var(--dn)}
+  .note{font-size:12px;color:var(--sub);margin-top:8px}
+  footer{margin-top:14px;font-size:12px;color:var(--sub);border-top:1px solid var(--line);padding-top:12px;line-height:1.6}
+  #tv-attr-logo{display:none!important}
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>현재 차트와 비슷한 과거 구간 오버랩</h1>
-<div class="bar" id="idx"></div>
-<div class="bar">
-  <span>비교 길이</span>
-  <select id="win"><option value="40">40일</option><option value="60" selected>60일</option><option value="90">90일</option></select>
-  <span>캔들로 볼 사례</span>
-  <select id="candleSel"><option value="-1">없음(선)</option><option value="0">사례 1</option><option value="1">사례 2</option><option value="2">사례 3</option></select>
-  <button id="zin">＋ 확대</button><button id="zout">－ 축소</button><button id="zall">전체</button><button id="znow">오늘 근처</button>
-</div>
-<div id="chart"></div>
-<div class="lg" id="lg"></div>
-<table id="tb"></table>
-<div class="note" id="meta"></div>
-<div class="note">마우스 휠: 확대/축소 · 드래그: 이동 · 모바일: 두 손가락 확대. 모든 사례는 구간 종료일(0일) 종가 = 100 으로 맞춘 값입니다. 정보 제공용이며 매수·매도 권유가 아닙니다.</div>
+  <div class="top">
+    <a href="../">#6683</a><span style="color:var(--sub)">/</span>
+    <h1>fractal-chart</h1>
+    <div class="grp" id="idx"></div>
+    <div class="grp" id="ymode"><button data-m="price">가격</button><button data-m="pct" class="on">%</button></div>
+    <div class="sp"></div>
+    <div class="grp">
+      <button id="zout" title="줌아웃">−</button>
+      <button id="zin" title="줌인">+</button>
+      <button id="rst" title="초기화 (더블클릭도 동일)">초기화</button>
+      <button id="zall" title="전체 보기">전체</button>
+    </div>
+  </div>
+  <div class="legend" id="lg"></div>
+  <div class="tools">
+    <span class="lbl">비교 길이</span>
+    <select id="win"><option value="40">40일</option><option value="60" selected>60일</option><option value="90">90일</option></select>
+    <span class="lbl">캔들로 볼 사례</span>
+    <select id="candleSel"><option value="-1">없음(선)</option><option value="0">사례 1</option><option value="1">사례 2</option><option value="2">사례 3</option></select>
+  </div>
+  <div id="chartbox"><div id="chart"></div></div>
+  <table id="tb"></table>
+  <div class="note" id="meta"></div>
+  <footer>
+    기준 = 오늘 종가(0일 종가 = 100), ±% = (가격 − 오늘 종가) ÷ 오늘 종가 × 100. 마우스 휠/핀치로 확대·축소, 드래그로 이동, 더블클릭으로 초기화.<br>
+    본 사이트는 학습·참고용이며 투자 권유가 아닙니다. 투자 판단과 책임은 본인에게 있습니다.
+  </footer>
 </div>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 const DAY0 = 14610 + 400;                 // 상대일 i -> 가짜 날짜(UTC 초)
 const toT = i => (DAY0 + i) * 86400;
 const rel = t => Math.round(t / 86400) - DAY0;
-const COL = ['#1baf7a', '#eda100', '#8b5cf6'];
-const UP = '#e34948', DN = '#2a78d6';
+const COL = ['#facc15', '#4aa3ff', '#c084fc'];
+const UP = '#34d399', DN = '#ff6b6b';
+let ymode = 'pct', zeroLine = null;
+const axisFmt = v => ymode === 'pct' ? (v - 100 >= 0 ? '+' : '') + (v - 100).toFixed(2) + '%' : v.toFixed(1);
 const INDEXES = [['NASDAQ', '나스닥'], ['SP500', 'S&P500'], ['KOSPI', '코스피'], ['BTC', '비트코인']];
 let cur = 'NASDAQ', data = null, series = [], curSeries = null, meta = [];
 
 const chart = LightweightCharts.createChart(document.getElementById('chart'), {
-  layout: { background: { color: '#ffffff' }, textColor: '#333' },
-  grid: { vertLines: { color: '#f0f0f0' }, horzLines: { color: '#f0f0f0' } },
-  rightPriceScale: { borderColor: '#ddd' },
-  timeScale: { borderColor: '#ddd', tickMarkFormatter: t => String(rel(t)), rightOffset: 3 },
-  localization: { timeFormatter: t => rel(t) + '일' },
+  layout: { background: { color: '#0f1115' }, textColor: '#8b93a7', attributionLogo: false },
+  grid: { vertLines: { color: '#1b1f27' }, horzLines: { color: '#1b1f27' } },
+  rightPriceScale: { borderColor: '#2a2f3a', minimumWidth: 80 },
+  timeScale: { borderColor: '#2a2f3a', tickMarkFormatter: t => String(rel(t)), rightOffset: 3 },
+  localization: { timeFormatter: t => rel(t) + '일', priceFormatter: axisFmt },
   crosshair: { mode: 0 },
+  handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
+  handleScroll: { pressedMouseMove: true, mouseWheel: false, horzTouchDrag: true, vertTouchDrag: false },
   autoSize: true,
 });
 
-
 const chartEl = document.getElementById('chart');
-const tip = document.createElement('div'); tip.id = 'tip'; chartEl.appendChild(tip);
+const tip = document.createElement('div'); tip.id = 'tip'; document.getElementById('chartbox').appendChild(tip);
 function pc(v) { const x = v - 100; return '<b class="' + (x >= 0 ? 'up' : 'dn') + '">' + (x >= 0 ? '+' : '') + x.toFixed(1) + '%</b>'; }
 chart.subscribeCrosshairMove(p => {
   if (!p.time || !p.point || p.point.x < 0 || p.point.y < 0) { tip.style.display = 'none'; return; }
-  let html = '<div style="color:#555;margin-bottom:2px">' + (rel(p.time) === 0 ? '오늘' : (rel(p.time) > 0 ? '오늘+' + rel(p.time) : '오늘' + rel(p.time)) + '일') + ' · 오늘 종가 대비</div>', n = 0;
+  let html = '<div style="color:#8b93a7;margin-bottom:2px">' + (rel(p.time) === 0 ? '오늘' : (rel(p.time) > 0 ? '오늘+' + rel(p.time) : '오늘' + rel(p.time)) + '일') + ' · 오늘 종가 대비</div>', n = 0;
   meta.forEach(m => {
     const d = p.seriesData.get(m.s); if (!d) return; n++;
     const dot = '<span class="sw" style="background:' + m.color + '"></span> ';
-    if (d.close !== undefined) html += dot + m.name + ' 종가 ' + pc(d.close) + ' <span style="color:#888">(고 ' + (d.high - 100).toFixed(1) + ' / 저 ' + (d.low - 100).toFixed(1) + ')</span><br>';
+    if (d.close !== undefined) html += dot + m.name + ' 종가 ' + pc(d.close) + ' <span style="color:#8b93a7">(고 ' + (d.high - 100).toFixed(1) + ' / 저 ' + (d.low - 100).toFixed(1) + ')</span><br>';
     else html += dot + m.name + ' ' + pc(d.value) + '<br>';
   });
   if (!n) { tip.style.display = 'none'; return; }
@@ -104,13 +136,15 @@ function draw() {
     meta.push({ s, name: '사례 ' + (k + 1) + ' (' + m.from.slice(0, 7) + ')', color: COL[k] });
   });
   curSeries = chart.addCandlestickSeries({
-    upColor: UP, downColor: DN, borderUpColor: UP, borderDownColor: DN, wickUpColor: UP, wickDownColor: DN,
-    priceLineVisible: false });
+    upColor: UP, downColor: DN, borderVisible: false, wickUpColor: UP, wickDownColor: DN,
+    priceLineVisible: false, priceFormat: { type: 'custom', formatter: axisFmt, minMove: 0.01 } });
+  curSeries.createPriceLine({ price: 100, color: '#555b6b', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
   curSeries.setData(data.current.map(b => ({ time: toT(b.i), open: b.o, high: b.h, low: b.l, close: b.c })));
   meta.push({ s: curSeries, name: '현재', color: UP, candle: true });
-  curSeries.setMarkers([{ time: toT(0), position: 'aboveBar', color: '#e34948', shape: 'arrowDown', text: '오늘' }]);
+  curSeries.setMarkers([{ time: toT(0), position: 'aboveBar', color: '#e8eaf0', shape: 'arrowDown', text: '오늘' }]);
   showNow();
 }
+function fmtAxisAll(){ chart.applyOptions({ localization: { priceFormatter: axisFmt } }); }
 
 function showNow() {
   chart.timeScale().setVisibleRange({ from: toT(-data.W + 1), to: toT(data.F) });
@@ -120,11 +154,11 @@ function fmt(v) { return '<span class="' + (v >= 0 ? 'up' : 'dn') + '">' + (v >=
 
 function renderInfo() {
   const lg = document.getElementById('lg'); lg.innerHTML = '';
-  lg.insertAdjacentHTML('beforeend', '<span><span class="sw" style="background:' + UP + '"></span> 현재 (' + data.current[0].i + '~0일, 캔들)</span>');
+  lg.insertAdjacentHTML('beforeend', '<div class="chip"><span class="dot" style="background:' + UP + '"></span><b>현재</b><span style="color:#8b93a7">' + data.current[0].i + '~0일 캔들</span></div>');
   data.matches.forEach((m, k) => {
     lg.insertAdjacentHTML('beforeend',
-      '<label><input type="checkbox" id="cb' + k + '" checked><span class="sw" style="background:' + COL[k] + '"></span>사례 ' + (k + 1) + ': ' + m.from + ' ~ ' + m.to + ' (상관 ' + m.corr + ')</label>');
-    document.getElementById('cb' + k).addEventListener('change', () => series[k].applyOptions({ visible: document.getElementById('cb' + k).checked }));
+      '<label class="chip" id="chip' + k + '"><input type="checkbox" id="cb' + k + '" checked><span class="dot" style="background:' + COL[k] + '"></span><b>사례 ' + (k + 1) + '</b><span style="color:#8b93a7">' + m.from + ' ~ ' + m.to + ' (상관 ' + m.corr + ')</span></label>');
+    document.getElementById('cb' + k).addEventListener('change', () => { const on = document.getElementById('cb' + k).checked; series[k].applyOptions({ visible: on }); document.getElementById('chip' + k).classList.toggle('off', !on); });
   });
   let h = '<tr><th>사례</th><th>구간 등락</th><th>이후 1개월</th><th>2개월</th><th>3개월</th></tr>';
   data.matches.forEach((m, k) => {
@@ -160,8 +194,14 @@ document.getElementById('win').onchange = load;
 document.getElementById('candleSel').onchange = () => { if (data) draw(); };
 document.getElementById('zin').onclick = () => zoom(0.6);
 document.getElementById('zout').onclick = () => zoom(1.6);
+document.getElementById('ymode').addEventListener('click', e => {
+  const m = e.target.dataset.m; if (!m || m === ymode) return; ymode = m;
+  document.querySelectorAll('#ymode button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  fmtAxisAll(); if (data) draw();
+});
+document.getElementById('rst').onclick = () => { if (data) showNow(); };
+chartEl.addEventListener('dblclick', () => { if (data) showNow(); });
 document.getElementById('zall').onclick = () => chart.timeScale().fitContent();
-document.getElementById('znow').onclick = () => { if (data) showNow(); };
 load();
 </script>
 </body>
